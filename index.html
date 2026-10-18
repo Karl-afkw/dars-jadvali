@@ -27,7 +27,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-app
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .tm{background:var(--ac2);color:var(--ac);border-radius:8px;padding:2px 8px;font-weight:600;font-size:14px}
 .rm{margin-left:auto;color:var(--mu);font-size:14px}
-textarea,input{width:100%;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px;margin-top:8px}
+textarea,input,select{width:100%;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px;margin-top:8px}
 textarea{resize:vertical}
 button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 12px}
 button.pri{background:var(--ac);border-color:var(--ac);color:#fff;margin-top:10px}
@@ -43,6 +43,8 @@ button.dg{color:var(--dg)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px;color:var(--mu)}
 .row2{display:flex;gap:8px;align-items:center}.row2 button{margin-top:8px}
 .cl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wx{text-align:center;color:var(--mu);margin:2px 0 10px;font-size:15px}
+.hrs{display:flex;gap:6px;overflow-x:auto;padding:8px 2px 6px;position:relative;text-align:center;-webkit-overflow-scrolling:touch}.hr{flex:0 0 auto;min-width:58px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:14px;color:var(--tx)}.hr small{color:var(--mu);font-size:12px;min-height:15px}.hr span{font-size:20px;line-height:1.3}.hr.now{border-color:var(--ac);background:var(--ac2)}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav button{flex:1;border:0;border-radius:0;background:none;font-size:12px;padding:8px 2px;color:var(--mu)}
 nav button span{display:block;font-size:20px}
@@ -70,12 +72,47 @@ const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
 const monday=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
 const fmt=s=>{const d=parse(s);return DS[d.getDay()]+' '+d.getDate()+'.'+(d.getMonth()+1)};
 const other=p=>p==='juft'?'toq':'juft';
-let S,tab='today',vd=iso(new Date()),sp='juft',sd=1,eid=null,ne=null;
+let S,tab='today',vd=iso(new Date()),sp='juft',sd=1,eid=null,ne=null,np=0;
 
 function load(){
   try{S=JSON.parse(localStorage.getItem('dj')||'null')}catch(e){S=null}
   if(!S||!S.sched)S={anchor:{mon:iso(monday(new Date())),p:'toq'},sched:{juft:{},toq:{}},hw:{},notes:[],theme:'auto'};
 }
+const CITIES={'Toshkent':[41.2995,69.2401],'Samarqand':[39.6542,66.9597],'Buxoro':[39.7747,64.4286],'Andijon':[40.7821,72.3442],'Namangan':[40.9983,71.6726],'Farg’ona':[40.3864,71.7864],'Nukus':[42.4531,59.6103],'Qarshi':[38.8606,65.7891],'Termiz':[37.2242,67.2783],'Urganch':[41.55,60.6333],'Navoiy':[40.0844,65.3792],'Jizzax':[40.1158,67.8422],'Guliston':[40.4897,68.7842]};
+const wxIcon=(c,hr)=>(c<=1&&hr!==undefined&&(hr<6||hr>=20))?'🌙':c===0?'☀️':c<=2?'⛅':c===3?'☁️':c<=48?'🌫️':c<=57?'🌦️':c<=67?'🌧️':c<=77?'❄️':c<=82?'🌦️':c<=86?'🌨️':'⛈️';
+function wxBox(){
+  const w=S.wx,d=w&&w.d;if(!d)return '';
+  const i=d.time.indexOf(vd);if(i<0)return '';
+  const r=d.precipitation_probability_max[i],H=w.h;
+  const now=new Date(),isToday=vd===iso(now),ck=iso(now)+'T'+String(now.getHours()).padStart(2,'0')+':00';
+  const ci=(H&&isToday)?H.time.indexOf(ck):-1;
+  const mm=`${Math.round(d.temperature_2m_max[i])}° / ${Math.round(d.temperature_2m_min[i])}°`;
+  let top=ci>=0
+    ?`${wxIcon(H.weather_code[ci],now.getHours())} <b>${Math.round(H.temperature_2m[ci])}°</b> hozir · ${mm}`
+    :`${wxIcon(d.weather_code[i])} <b>${Math.round(d.temperature_2m_max[i])}°</b> / ${Math.round(d.temperature_2m_min[i])}°`;
+  top+=` · ${esc(w.c)}${r>=30?' · 💧'+r+'%':''}`;
+  let strip='';
+  if(H){
+    const items=[];
+    H.time.forEach((t,k)=>{
+      if(t.slice(0,10)!==vd)return;
+      const hr=+t.slice(11,13),p=H.precipitation_probability[k];
+      items.push(`<div class="hr${t===ck?' now':''}"><small>${t.slice(11,16)}</small><span>${wxIcon(H.weather_code[k],hr)}</span><b>${Math.round(H.temperature_2m[k])}°</b><small>${p>=30?'💧'+p+'%':''}</small></div>`);
+    });
+    if(items.length)strip=`<div class="hrs">${items.join('')}</div>`;
+  }
+  return top+strip;
+}
+function wxScroll(){const el=document.querySelector('.hrs .now');if(el)el.parentNode.scrollLeft=Math.max(0,el.offsetLeft-8)}
+async function wxLoad(force){
+  const w=S.wx;if(!force&&w.d&&w.h&&Date.now()-w.ts<18e5)return;
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto&forecast_days=7`);
+    const j=await r.json();
+    if(j&&j.daily){w.d=j.daily;w.h=j.hourly;w.ts=Date.now();save();const el=$('#wx');if(el){el.innerHTML=wxBox();wxScroll()}}
+  }catch(e){}
+}
+function fixS(){if(!S.wx)S.wx={c:'Toshkent',lat:41.2995,lon:69.2401};if(!S.slots)S.slots=[{s:'08:30',e:'09:50'},{s:'10:00',e:'11:20'},{s:'11:30',e:'12:50'},{s:'13:30',e:'14:50'}]}
 function save(){try{localStorage.setItem('dj',JSON.stringify(S))}catch(e){}}
 function theme(){document.documentElement.dataset.theme=S.theme==='auto'?'':S.theme}
 function parity(d){
@@ -88,7 +125,8 @@ const lessonRow=l=>`<div class="row"><span class="tm">${esc(l.s)}–${esc(l.e)}<
 function vToday(){
   const d=parse(vd),p=parity(d),ls=lessons(p,d.getDay());
   let h=`<div class="top"><button class="ic" data-a="prev">‹</button><div class="c"><b>${DN[d.getDay()]}</b><small>${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}</small></div><button class="ic" data-a="next">›</button></div>
-<button class="pill" data-a="flip">${p==='juft'?'Juft':'Toq'} hafta ⇄</button>`;
+<button class="pill" data-a="flip">${p==='juft'?'Juft':'Toq'} hafta ⇄</button>
+<div id="wx" class="wx">${wxBox()}</div>`;
   if(!ls.length)h+='<p class="mu" style="text-align:center">Bu kunda dars yo’q 🎉</p>';
   ls.forEach(l=>{
     const k=vd+'|'+l.id,x=S.hw[k]||{};
@@ -105,9 +143,11 @@ function vSched(){
   if(!L.length)h+='<p class="mu">Bu kunga dars qo’shilmagan</p>';
   L.forEach(l=>h+=`<div class="card">${lessonRow(l)}<div class="btns"><button data-a="ed" data-v="${l.id}">Tahrirlash</button><button class="dg" data-a="del" data-v="${l.id}">O’chirish</button></div></div>`);
   const e=L.find(l=>l.id===eid)||{};
+  const sl=S.slots,d0=sl[np]||sl[0]||{s:'08:30',e:'09:50'},cs=e.s||d0.s,ce=e.e||d0.e,si=sl.findIndex(x=>x.s===cs&&x.e===ce);
   h+=`<div class="card"><b>${e.id?'Darsni tahrirlash':'Dars qo’shish'} (${DN[sd]}, ${sp==='juft'?'juft':'toq'})</b>
 <input id="fn" placeholder="Fan nomi" value="${esc(e.n||'')}">
-<div class="two"><label>Boshlanishi<input id="fs" type="time" value="${e.s||'08:30'}"></label><label>Tugashi<input id="fe" type="time" value="${e.e||'09:50'}"></label></div>
+<select id="fp">${sl.map((x,i)=>`<option value="${i}" ${i===si?'selected':''}>${i+1}-para (${x.s}–${x.e})</option>`).join('')}<option value="-1" ${si<0?'selected':''}>Boshqa vaqt</option></select>
+<div class="two"><label>Boshlanishi<input id="fs" type="time" value="${cs}"></label><label>Tugashi<input id="fe" type="time" value="${ce}"></label></div>
 <input id="fr" placeholder="Xona (masalan, 204)" value="${esc(e.r||'')}">
 <button class="pri" data-a="saveL">Saqlash</button>${e.id?' <button data-a="cancelL">Bekor</button>':''}</div>`;
   return h;
@@ -139,12 +179,15 @@ function vSet(){
   const T={auto:'Avto',light:'Yorug’',dark:'Qorong’u'}[S.theme];
   return `<div class="card"><b>Ko’rinish</b><br><button class="pri" data-a="theme">Mavzu: ${T}</button></div>
 <div class="card"><b>Hafta turi</b><p class="mu">Hozirgi hafta: ${parity(new Date())==='juft'?'juft':'toq'}. Noto’g’ri bo’lsa, almashtiring.</p><button data-a="flipNow">Juft ⇄ Toq</button></div>
+<div class="card"><b>Ob-havo</b><p class="mu">Internet bo’lganda yangilanadi, aks holda oxirgi saqlangan ma’lumot ko’rinadi.</p><select data-wc="1">${Object.keys(CITIES).map(c=>`<option ${c===S.wx.c?'selected':''}>${c}</option>`).join('')}${CITIES[S.wx.c]?'':`<option selected>${esc(S.wx.c)}</option>`}</select><button data-a="geo" style="margin-top:8px">📍 Joylashuvim bo’yicha</button></div>
+<div class="card"><b>Para vaqtlari</b><p class="mu">Bir marta kiriting. Dars qo’shganda parani tanlaysiz, vaqt o’zi to’ladi.</p>${S.slots.map((x,i)=>`<div class="row2"><span class="mu">${i+1}</span><input type="time" data-sl="${i}" data-f="s" value="${x.s}"><input type="time" data-sl="${i}" data-f="e" value="${x.e}"><button class="dg" data-a="delSl" data-v="${i}">✕</button></div>`).join('')}<button data-a="addSl" style="margin-top:10px">＋ Para qo’shish</button></div>
 <div class="card"><b>Zaxira</b><p class="mu">“Nusxa olish” bosib, matnni xavfsiz joyga (masalan, Saqlangan xabarlar) saqlang. Tiklash uchun matnni shu yerga qo’yib “Tiklash” bosing.</p><textarea id="bk" rows="4"></textarea><div class="btns"><button data-a="exp">Nusxa olish</button><button data-a="imp">Tiklash</button></div></div>`;
 }
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   $('#app').innerHTML=({today:vToday,sched:vSched,hw:vHw,notes:vNotes,set:vSet})[tab]();
   if(tab==='notes')noteList();
+  if(tab==='today'){wxScroll();wxLoad()}
 }
 function shift(n){const d=parse(vd);d.setDate(d.getDate()+n);vd=iso(d)}
 
@@ -156,8 +199,8 @@ document.addEventListener('click',e=>{
   if(a==='prev')shift(-1);
   else if(a==='next')shift(1);
   else if(a==='flip'){const d=parse(vd);S.anchor={mon:iso(monday(d)),p:other(parity(d))};save()}
-  else if(a==='sp'){sp=v;eid=null}
-  else if(a==='sd'){sd=+v;eid=null}
+  else if(a==='sp'){sp=v;eid=null;np=0}
+  else if(a==='sd'){sd=+v;eid=null;np=0}
   else if(a==='ed')eid=v;
   else if(a==='cancelL')eid=null;
   else if(a==='del'){S.sched[sp][sd]=lessons(sp,sd).filter(l=>l.id!==v);eid=null;save()}
@@ -166,9 +209,12 @@ document.addEventListener('click',e=>{
     const o={n,s:$('#fs').value||'08:30',e:$('#fe').value||'09:50',r:$('#fr').value.trim()};
     const arr=S.sched[sp][sd]||(S.sched[sp][sd]=[]);
     const ex=arr.find(l=>l.id===eid);
-    if(ex)Object.assign(ex,o);else arr.push({id:uid(),...o});
+    if(ex)Object.assign(ex,o);else{arr.push({id:uid(),...o});const pi=+$('#fp').value;if(pi>=0)np=Math.min(pi+1,S.slots.length-1)}
     eid=null;save();
   }
+  else if(a==='geo'){if(navigator.geolocation)navigator.geolocation.getCurrentPosition(q=>{S.wx={c:'Joylashuv',lat:q.coords.latitude,lon:q.coords.longitude};save();wxLoad(true).then(()=>render())},()=>{});return}
+  else if(a==='delSl'){S.slots.splice(+v,1);save()}
+  else if(a==='addSl'){S.slots.push({s:'08:30',e:'09:50'});save()}
   else if(a==='newN')ne='new';
   else if(a==='openN')ne=v;
   else if(a==='cancelN')ne=null;
@@ -188,7 +234,7 @@ document.addEventListener('click',e=>{
     return;
   }
   else if(a==='imp'){
-    try{const o=JSON.parse($('#bk').value);if(!o.sched||!o.anchor)throw 0;S=o;save();theme();tab='today'}
+    try{const o=JSON.parse($('#bk').value);if(!o.sched||!o.anchor)throw 0;S=o;fixS();save();theme();tab='today'}
     catch(err){$('#bk').value='';$('#bk').placeholder='Matn noto’g’ri. Qayta urinib ko’ring.';return}
   }
   render();
@@ -203,13 +249,18 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.dataset.wc&&CITIES[t.value]){S.wx={c:t.value,lat:CITIES[t.value][0],lon:CITIES[t.value][1]};save();wxLoad(true)}
+  if(t.id==='fp'){const x=S.slots[+t.value];if(x){$('#fs').value=x.s;$('#fe').value=x.e}}
+  if(t.dataset.sl!==undefined){S.slots[+t.dataset.sl][t.dataset.f]=t.value;save()}
   if(t.dataset.c){
     const k=t.dataset.c,x=S.hw[k]||(S.hw[k]={t:'',d:false});
     x.d=t.checked;x.n=x.n||t.dataset.n;x.dt=k.split('|')[0];save();
     if(tab==='hw')render();
   }
 });
-load();theme();render();
+load();fixS();theme();
+const hh=location.hash.slice(1);if(['today','sched','hw','notes','set'].includes(hh))tab=hh;
+render();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
